@@ -205,13 +205,33 @@ Auth's own uniqueness check on the address is what makes usernames unique.
 
 ## Admin
 
-Admin power is defined by one Firestore document, `config/admins`, holding a
-list of uids. `firestore.rules` reads that same document to decide what an
-admin may do, so the power is enforced by the rules engine — hiding the
-dashboard button in the UI is only a convenience. Nothing in the app can write
-to that document, so there is no way to promote yourself; it is seeded by hand
-in the Firebase console. **[DEPLOY.md](DEPLOY.md#9-make-yourself-an-admin)** has
-the steps.
+**`ArthurLima` is the administrator by default.** Sign up with that username
+and the dashboard is simply there — no Firebase console step, no configuration.
+
+It has to work by username rather than by uid, because a uid does not exist
+until somebody has signed up, so a freshly deployed copy would otherwise have
+no administrator and no way to appoint one. Exactly one account can ever hold
+it: usernames become Firebase Auth addresses (`arthurlima@…`), Auth enforces
+uniqueness on those, the mapping lowercases so casing cannot be used to get a
+second one, and `usernameLower` is frozen once a profile exists.
+
+> ⚠️ **It is first-come.** Whoever registers the username gets it, so sign
+> `ArthurLima` up yourself before you share the URL with anyone. Once the
+> account exists it cannot be taken. To close the window permanently, add its
+> uid to `config/admins` as below — that is uid-based and immune to the name.
+
+Additional admins come from one Firestore document, `config/admins`, holding a
+list of uids. `firestore.rules` reads that same document — and checks the
+default-admin username — to decide what an admin may do, so the power is
+enforced by the rules engine. Hiding the dashboard button in the UI is only a
+convenience. Nothing in the app can write to `config/admins`, so there is no
+way to promote yourself; it is seeded by hand in the Firebase console.
+**[DEPLOY.md](DEPLOY.md#8-admins)** has the steps.
+
+The default admin's username lives in two places that must agree:
+`DEFAULT_ADMIN_USERNAME` in `src/lib/admin.ts` (decides whether to show the
+button) and `isDefaultAdmin()` in `firestore.rules` (decides what they can
+actually do). Changing it means changing both and redeploying rules.
 
 The dashboard lists every account with its join date, last-seen time, online
 state and uid, and offers:
@@ -222,7 +242,8 @@ state and uid, and offers:
   (both sides), and leaves them blocked.
 
 Admins and your own account are marked *Protected* and cannot be blocked or
-deleted from the dashboard, so it is not possible to lock everyone out.
+deleted from the dashboard, so it is not possible to lock everyone out. The
+built-in admin is tagged **Owner**.
 
 ## Honest limits
 

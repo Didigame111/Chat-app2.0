@@ -134,11 +134,30 @@ running (iPadOS 16.4+ requires the Home Screen install for this).
 
 ---
 
-## 8. Make yourself an admin
+## 8. Admins
 
-The admin dashboard is hidden until your uid is listed in a single Firestore
+### The built-in admin
+
+**`ArthurLima` is an administrator automatically.** Sign up with that username
+and the **Admin dashboard** button is in the sidebar straight away. There is
+nothing to configure — you can skip the rest of this section unless you want a
+second admin.
+
+> ⚠️ **Do this first, before you give the URL to anyone.** The account is
+> claimed by whoever signs up with the name. Once it exists nobody else can
+> take it — Firebase Auth enforces that, in any casing — but until then the
+> name is unclaimed. Sign up, then share the link.
+
+Renaming the built-in admin means editing two files and redeploying:
+`DEFAULT_ADMIN_USERNAME` in `src/lib/admin.ts` and the username inside
+`isDefaultAdmin()` in `firestore.rules`. They must match, and the rules one is
+the one that actually grants the power.
+
+### Adding more admins
+
+Everyone else becomes an admin by having their uid listed in a single Firestore
 document. Nothing in the app can write to that document — that is what stops
-anyone promoting themselves — so you seed it by hand, once.
+anyone promoting themselves — so you seed it by hand.
 
 ### Find your uid
 
@@ -166,11 +185,15 @@ You should end up with `config/admins` containing `uids: ["your-uid-here"]`.
 
 ### Check it
 
-Reload the app. An **Admin dashboard** button appears above your name in the
+Reload the app. An **Admin dashboard** button appears above their name in the
 sidebar — no redeploy needed, the app watches that document live.
 
-To add another admin later, open the same document and add a second item to the
+To add another admin later, open the same document and add another item to the
 `uids` array.
+
+> Worth doing for `ArthurLima` too, even though it already works: a uid entry
+> is tied to the account rather than the name, which closes the first-come
+> window described above for good.
 
 ---
 

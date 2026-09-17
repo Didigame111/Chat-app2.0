@@ -16,6 +16,40 @@ import { deleteConversation } from './chat';
 import type { Profile } from './types';
 
 /**
+ * The built-in administrator.
+ *
+ * Admin normally means "your uid is listed in config/admins", but that document
+ * has to be seeded by hand and a uid does not exist until someone has signed
+ * up — so a freshly deployed copy of this app would have no administrator at
+ * all. This one account is therefore recognised by username instead, which is
+ * known ahead of time.
+ *
+ * Exactly one account can ever hold it: usernames map to Firebase Auth
+ * addresses (arthurlima@...), Auth enforces uniqueness on those, the mapping
+ * lowercases, and firestore.rules freezes usernameLower after the profile is
+ * created. So this cannot be taken twice, or renamed onto.
+ *
+ * ⚠️ This value is duplicated in firestore.rules, which is what actually
+ * enforces it — the check here only decides whether to show the dashboard
+ * button. Change one and you must change the other.
+ */
+export const DEFAULT_ADMIN_USERNAME = 'arthurlima';
+
+/** True for the built-in administrator, regardless of how they typed the name. */
+export function isDefaultAdmin(profile: Pick<Profile, 'usernameLower'> | null | undefined): boolean {
+  return profile?.usernameLower === DEFAULT_ADMIN_USERNAME;
+}
+
+/** True for the built-in administrator or anyone listed in config/admins. */
+export function hasAdminRights(
+  profile: Pick<Profile, 'uid' | 'usernameLower'> | null | undefined,
+  adminUids: string[],
+): boolean {
+  if (!profile) return false;
+  return isDefaultAdmin(profile) || adminUids.includes(profile.uid);
+}
+
+/**
  * Who counts as an admin.
  *
  * The list lives in a single Firestore document, `config/admins`, holding a
@@ -27,6 +61,9 @@ import type { Profile } from './types';
  *
  * The document is seeded by hand in the Firebase console (see DEPLOY.md) and
  * nobody can write to it from the app, so there is no way to promote yourself.
+ *
+ * It is also optional: DEFAULT_ADMIN_USERNAME above is recognised whether or
+ * not this document exists, so a fresh deployment still has an administrator.
  */
 export function subscribeToAdmins(onChange: (uids: string[]) => void): Unsubscribe {
   return onSnapshot(

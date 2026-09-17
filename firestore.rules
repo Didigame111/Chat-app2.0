@@ -17,14 +17,42 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    // Admin power is defined by one hand-seeded document, config/admins, which
-    // nothing in the app can write to. Always put this AFTER the ordinary
-    // check in an `||` so the extra document read only happens when someone
-    // is actually acting as an admin.
-    function isAdmin() {
+    // The built-in administrator, recognised by username.
+    //
+    // config/admins below holds uids, but a uid does not exist until someone
+    // has signed up, so a freshly deployed copy would otherwise have no
+    // administrator at all and no way to appoint one. This account is keyed on
+    // the username instead, which is known in advance.
+    //
+    // Exactly one account can ever hold it. Usernames become Firebase Auth
+    // addresses (arthurlima@...), Auth enforces uniqueness on those, the
+    // mapping lowercases, and usernameLower is frozen once the profile exists
+    // (see the users rules below). So it cannot be claimed twice or renamed
+    // onto — but it IS first-come, so sign this account up before sharing the
+    // URL. DEPLOY.md says so too.
+    //
+    // ⚠️ Duplicated as DEFAULT_ADMIN_USERNAME in src/lib/admin.ts, which
+    // decides whether to show the dashboard button. Change both together.
+    function isDefaultAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(me()))
+        && get(/databases/$(database)/documents/users/$(me())).data.usernameLower
+             == 'arthurlima';
+    }
+
+    // Everyone else gets admin from one hand-seeded document, config/admins,
+    // which nothing in the app can write to.
+    //
+    // Always put isAdmin() AFTER the ordinary check in an `||`, so these extra
+    // document reads only happen when someone is genuinely acting as an admin.
+    function isListedAdmin() {
       return signedIn()
         && exists(/databases/$(database)/documents/config/admins)
         && me() in get(/databases/$(database)/documents/config/admins).data.uids;
+    }
+
+    function isAdmin() {
+      return isListedAdmin() || isDefaultAdmin();
     }
 
     // --------------------------------------------------------------- config
