@@ -1,0 +1,62 @@
+.wrap {
+  display: grid;
+  place-items: center;
+  height: var(--app-height);
+  padding: calc(var(--safe-top) + 24px) calc(var(--safe-right) + 20px)
+    calc(var(--safe-bottom) + 24px) calc(var(--safe-left) + 20px);
+  overflow-y: auto;
+}
+
+.card {
+  width: min(620px, 100%);
+  padding: clamp(24px, 4vw, 36px);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-lg);
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: var(--accent-gradient);
+  color: #fff;
+}
+
+.title {
+  margin: 18px 0 10px;
+  font-size: 1.7rem;
+}
+
+.copy {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.steps {
+  margin: 18px 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 10px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.steps strong {
+  color: var(--text-main);
+}
+
+code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.88em;
+  color: var(--text-main);
+}

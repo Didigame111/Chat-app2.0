@@ -1,0 +1,248 @@
+.screen {
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  height: var(--app-height);
+  padding:
+    calc(var(--safe-top) + 24px)
+    calc(var(--safe-right) + 24px)
+    calc(var(--safe-bottom) + 24px)
+    calc(var(--safe-left) + 24px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/*
+  iPad 9th gen landscape is 1080pt and 10th gen is 1180pt, so both get the
+  two-column treatment. Portrait (810pt / 820pt) drops the hero entirely —
+  with the software keyboard up there is only ~420pt of usable height left,
+  and the form has to own all of it.
+*/
+.hero {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .screen {
+    grid-template-columns: minmax(340px, 1fr) minmax(400px, 480px);
+    gap: clamp(32px, 6vw, 88px);
+    justify-items: stretch;
+    align-items: center;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .hero {
+    display: block;
+    max-width: 460px;
+    justify-self: end;
+    animation: fadeInUp 0.45s ease both;
+  }
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 14px 34px var(--accent-glow);
+}
+
+.heroTitle {
+  margin-top: 22px;
+  font-size: 3.1rem;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.heroCopy {
+  margin-top: 12px;
+  font-size: 1.08rem;
+  color: var(--text-muted);
+  max-width: 40ch;
+}
+
+.points {
+  margin-top: 26px;
+  display: grid;
+  gap: 14px;
+  list-style: none;
+}
+
+.points li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.97rem;
+}
+
+.points svg {
+  color: var(--accent-secondary);
+  flex: none;
+}
+
+.panel {
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
+}
+
+@media (min-width: 1000px) {
+  .panel {
+    justify-self: start;
+  }
+}
+
+.card {
+  padding: clamp(24px, 4vw, 34px);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-lg);
+  animation: fadeInUp 0.35s ease both;
+}
+
+.cardHead {
+  margin-bottom: 22px;
+}
+
+.cardTitle {
+  font-size: 1.6rem;
+}
+
+.cardSub {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.96rem;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+}
+
+.tab {
+  min-height: var(--tap);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-weight: 560;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tabActive {
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 6px 18px var(--accent-glow);
+}
+
+.form {
+  margin-top: 22px;
+  display: grid;
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 560;
+  color: var(--text-muted);
+}
+
+.input {
+  width: 100%;
+  /* Tall enough to hit reliably with a thumb while holding the iPad. */
+  min-height: var(--tap-lg);
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  color: var(--text-main);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.input::placeholder {
+  color: var(--text-dim);
+}
+
+.input:focus {
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+.error {
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #fda4af;
+  font-size: 0.9rem;
+}
+
+@media (prefers-color-scheme: light) {
+  .error { color: #9f1239; }
+}
+
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: var(--tap-lg);
+  margin-top: 4px;
+  border-radius: var(--radius-md);
+  background: var(--accent-gradient);
+  color: #fff;
+  font-weight: 620;
+  font-size: 1.02rem;
+  box-shadow: 0 10px 26px var(--accent-glow);
+  transition: transform 0.12s ease, opacity 0.2s ease;
+}
+
+.submit:active {
+  transform: scale(0.985);
+}
+
+.submit:disabled {
+  opacity: 0.65;
+  box-shadow: none;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.footnote {
+  margin-top: 18px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.link {
+  color: var(--accent-secondary);
+  font-weight: 560;
+  padding: 6px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
