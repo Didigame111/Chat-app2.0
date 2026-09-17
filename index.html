@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!--
+      viewport-fit=cover lets the layout paint into the rounded corners of the
+      iPad (10th gen) screen; the CSS then pulls content back with
+      env(safe-area-inset-*). Zoom is deliberately left enabled for
+      accessibility — Safari on iPadOS ignores user-scalable=no anyway, so the
+      real fix for "tapping a field zooms the page" is the 16px minimum font
+      size on inputs in globals.css.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!-- Stop Safari turning message text that looks like a phone number into a link. -->
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>Aura Chat</title>
+    <meta name="description" content="A fast, private chat app built for iPad." />
+
+    <!-- Add to Home Screen, iPadOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Aura" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#080c14" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)" />
+
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+
+    <!--
+      Optional runtime config. Editing public/firebase-config.js lets someone
+      point a built copy of this app at a different Firebase project without
+      reinstalling Node and rebuilding. Safe to leave as-is when using
+      .env / VITE_FIREBASE_* at build time.
+    -->
+    <script src="/firebase-config.js"></script>
+
+    <style>
+      /* Painted before the JS bundle arrives so the first frame on an iPad is
+         the app's own dark background, not a white flash. */
+      html, body, #root { height: 100%; margin: 0; background: #080c14; }
+      @media (prefers-color-scheme: light) {
+        html, body, #root { background: #f5f7fb; }
+      }
+      #boot {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        font: 500 17px/1.4 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"><div id="boot">Loading Aura…</div></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

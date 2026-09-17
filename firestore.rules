@@ -1,0 +1,129 @@
+rules_version = '2';
+
+// Aura Chat 2.0 — security rules.
+//
+// There is no backend in this app: the client talks to Firestore directly,
+// so these rules ARE the backend. Everything a server route used to check in
+// Chat_app v1 (session ownership, "is this really your message", size limits)
+// is enforced here instead.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function me() {
+      return request.auth.uid;
+    }
+
+    // ---------------------------------------------------------------- users
+    // Public-ish directory so people can be found by username in search.
+    // Only ever contains a display name, a lowercase search key and an
+    // avatar colour — no email address, no credentials.
+    match /users/{userId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && userId == me()
+        && request.resource.data.uid == me()
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 3
+        && request.resource.data.username.size() <= 24
+        && request.resource.data.usernameLower == request.resource.data.username.lower();
+
+      // A username is permanent: it is the handle other people search for.
+      allow update: if signedIn()
+        && userId == me()
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.usernameLower == resource.data.usernameLower;
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------- chats
+    // Document id is the two member uids, sorted and joined with "_", so a
+    // pair of people can only ever have one conversation document and either
+    // side can derive its id without a lookup.
+    match /chats/{chatId} {
+
+      function isMember() {
+        // `resource` is null when the document does not exist yet, and
+        // dereferencing it would abort the whole rule evaluation rather than
+        // just denying — hence the explicit guard.
+        return signedIn() && resource != null && me() in resource.data.members;
+      }
+
+      function joiningAsMember() {
+        return signedIn() && me() in request.resource.data.members;
+      }
+
+      function canonicalId() {
+        return request.resource.data.members[0] < request.resource.data.members[1]
+          && chatId == request.resource.data.members[0] + '_' + request.resource.data.members[1];
+      }
+
+      // Before two people have ever spoken, the client looks the conversation
+      // up to decide whether to create it. That read hits a document that does
+      // not exist, so it is allowed purely on the id — which, by construction,
+      // is the two uids. Nothing is disclosed: the reader is asking about a
+      // conversation they would be half of.
+      allow get: if isMember()
+        || (signedIn() && resource == null && chatId.split('_').hasAny([me()]));
+
+      allow list: if isMember();
+
+      allow create: if joiningAsMember()
+        && request.resource.data.members.size() == 2
+        && canonicalId();
+
+      // Members may update conversation metadata (last message preview,
+      // unread counters, typing flags, read markers) but may never rewrite
+      // who is in the conversation.
+      allow update: if isMember()
+        && joiningAsMember()
+        && request.resource.data.members == resource.data.members;
+
+      allow delete: if false;
+
+      // ------------------------------------------------------------ messages
+      match /messages/{messageId} {
+
+        function chatMembers() {
+          return get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        }
+
+        function inThisChat() {
+          return signedIn() && me() in chatMembers();
+        }
+
+        allow read: if inThisChat();
+
+        allow create: if inThisChat()
+          && request.resource.data.senderId == me()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 4000
+          // Images are inlined as compressed data URLs because Cloud Storage
+          // is not part of the free Spark plan. Cap them well under the 1 MiB
+          // Firestore document limit.
+          && (!('image' in request.resource.data.keys())
+              || request.resource.data.image == null
+              || (request.resource.data.image is string
+                  && request.resource.data.image.size() <= 600000));
+
+        // Used for read receipts only — the body of a message is immutable.
+        allow update: if inThisChat()
+          && request.resource.data.senderId == resource.data.senderId
+          && request.resource.data.text == resource.data.text
+          && request.resource.data.createdAt == resource.data.createdAt;
+
+        allow delete: if signedIn() && resource.data.senderId == me();
+      }
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
