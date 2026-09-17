@@ -246,3 +246,18 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.notice {
+  margin-bottom: 18px;
+  padding: 12px 15px;
+  border-radius: var(--radius-sm);
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.32);
+  color: #fda4af;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: light) {
+  .notice { color: #9f1239; }
+}

@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
+  deleteConversation,
+  hideConversation,
+  isHiddenFor,
   isOnline,
   markConversationRead,
   openConversation,
@@ -11,6 +14,9 @@ import {
   sendMessage,
   setTyping,
 } from '../lib/chat';
+import { subscribeToAdmins } from '../lib/admin';
+import { AdminDashboard } from './AdminDashboard';
+import { ConfirmDialog } from './ConfirmDialog';
 import { notify, previewOf } from '../lib/notify';
 import type { Chat, Message, Profile } from '../lib/types';
 import { useSplitLayout } from '../hooks/useMediaQuery';
@@ -37,14 +43,34 @@ export function ChatShell({ me, onSignOut }: ChatShellProps) {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+
+  const [adminUids, setAdminUids] = useState<string[]>([]);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [partnerLastSeen, setPartnerLastSeen] = useState(0);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const seenStamps = useRef<Record<string, number>>({});
 
+  useEffect(() => subscribeToAdmins(setAdminUids), []);
+
+  const isAdmin = adminUids.includes(me.uid);
+
   const activeChat = useMemo(
     () => chats.find((chat) => chat.id === activeId),
     [chats, activeId],
+  );
+
+  /**
+   * What the sidebar shows. A conversation you closed stays out of the list
+   * until something newer than the moment you closed it arrives — except for
+   * the one you are reading right now, which would be jarring to have vanish
+   * out from under you.
+   */
+  const visibleChats = useMemo(
+    () => chats.filter((chat) => chat.id === activeId || !isHiddenFor(chat, me.uid)),
+    [chats, activeId, me.uid],
   );
 
   const partnerId = activeChat?.members.find((uid) => uid !== me.uid) ?? null;
@@ -77,6 +103,8 @@ export function ChatShell({ me, onSignOut }: ChatShellProps) {
       const lookingAtIt = chat.id === activeId && document.visibilityState === 'visible';
 
       if (isNew && fromSomeoneElse && !lookingAtIt) {
+        // A closed conversation un-closes itself when something new arrives,
+        // so it is right to notify here too.
         const sender = chat.memberNames?.[chat.lastSenderId] ?? 'Someone';
         notify(sender, previewOf(chat.lastMessage, chat.lastMessage === '📷 Photo'), chat.id);
       }
@@ -90,7 +118,7 @@ export function ChatShell({ me, onSignOut }: ChatShellProps) {
   );
 
   useEffect(() => {
-    document.title = totalUnread > 0 ? `(${totalUnread}) Aura Chat` : 'Aura Chat';
+    document.title = totalUnread > 0 ? `(${totalUnread}) Schoology 2.0` : 'Schoology 2.0';
   }, [totalUnread]);
 
   // ------------------------------------------------------------------ messages
@@ -196,6 +224,30 @@ export function ChatShell({ me, onSignOut }: ChatShellProps) {
     [activeId, partnerId, me.uid],
   );
 
+  const handleHideConversation = useCallback(() => {
+    if (!activeId) return;
+    void hideConversation(activeId, me.uid);
+    setActiveId(null);
+    if (!isSplit) setDrawerOpen(true);
+  }, [activeId, me.uid, isSplit]);
+
+  const handleDeleteConversation = useCallback(async () => {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      await deleteConversation(confirmDelete);
+      setActiveId((current) => (current === confirmDelete ? null : current));
+      setConfirmDelete(null);
+      if (!isSplit) setDrawerOpen(true);
+    } catch (error) {
+      console.error('could not delete conversation', error);
+      setStartError('Could not delete that conversation. Check your connection.');
+      setConfirmDelete(null);
+    } finally {
+      setDeleting(false);
+    }
+  }, [confirmDelete, isSplit]);
+
   const handleTyping = useCallback(
     (typing: boolean) => {
       if (!activeId) return;
@@ -231,6 +283,12 @@ export function ChatShell({ me, onSignOut }: ChatShellProps) {
 
   const showDrawer = isSplit || drawerOpen;
 
+  if (showAdmin && isAdmin) {
+    return (
+      <AdminDashboard me={me} adminUids={adminUids} onClose={() => setShowAdmin(false)} />
+    );
+  }
+
   return (
     <div className={styles.shell} data-layout={isSplit ? 'split' : 'stacked'}>
       {!isSplit && drawerOpen && (
@@ -244,7 +302,7 @@ export function ChatShell({ me, onSignOut }: ChatShellProps) {
 
       <Sidebar
         me={me}
-        chats={chats}
+        chats={visibleChats}
         activeId={activeId}
         term={term}
         results={results}
@@ -258,6 +316,11 @@ export function ChatShell({ me, onSignOut }: ChatShellProps) {
         onStartChat={startChatWith}
         onClose={() => setDrawerOpen(false)}
         onSignOut={onSignOut}
+        isAdmin={isAdmin}
+        onOpenAdmin={() => {
+          setShowAdmin(true);
+          setDrawerOpen(false);
+        }}
       />
 
       <ChatPane
@@ -273,7 +336,25 @@ export function ChatShell({ me, onSignOut }: ChatShellProps) {
         onOpenList={() => setDrawerOpen(true)}
         onSend={handleSend}
         onTyping={handleTyping}
+        onHideConversation={handleHideConversation}
+        onDeleteConversation={() => setConfirmDelete(activeId)}
       />
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete this conversation?"
+          body={
+            'Every message and photo in it is erased for both of you, not just ' +
+            'hidden from your list. This cannot be undone. To simply clear it ' +
+            'from your own sidebar, use Close conversation instead.'
+          }
+          confirmLabel="Delete for everyone"
+          destructive
+          busy={deleting}
+          onConfirm={() => void handleDeleteConversation()}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </div>
   );
 }

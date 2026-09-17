@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { MessagesSquare, PanelLeft, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { EyeOff, MessagesSquare, MoreVertical, PanelLeft, Trash2, X } from 'lucide-react';
 import { isTyping } from '../lib/chat';
 import type { Chat, Message, Profile } from '../lib/types';
 import { Avatar } from './Avatar';
@@ -20,6 +20,8 @@ interface ChatPaneProps {
   onOpenList: () => void;
   onSend: (text: string, image: string | null) => Promise<void>;
   onTyping: (typing: boolean) => void;
+  onHideConversation: () => void;
+  onDeleteConversation: () => void;
 }
 
 export function ChatPane({
@@ -35,8 +37,29 @@ export function ChatPane({
   onOpenList,
   onSend,
   onTyping,
+  onHideConversation,
+  onDeleteConversation,
 }: ChatPaneProps) {
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close the overflow menu on an outside tap or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (!lightbox) return;
@@ -106,6 +129,55 @@ export function ChatPane({
               'Offline'
             )}
           </p>
+        </div>
+
+        <div className={styles.paneMenu} ref={menuRef}>
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label="Conversation options"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <MoreVertical size={21} />
+          </button>
+
+          {menuOpen && (
+            <div className={styles.menu} role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.menuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onHideConversation();
+                }}
+              >
+                <EyeOff size={18} />
+                <span>
+                  <strong>Close conversation</strong>
+                  <em>Hides it from your list. Comes back on a new message.</em>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                className={`${styles.menuItem} ${styles.menuItemDanger}`}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDeleteConversation();
+                }}
+              >
+                <Trash2 size={18} />
+                <span>
+                  <strong>Delete conversation</strong>
+                  <em>Erases every message, for both of you.</em>
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 

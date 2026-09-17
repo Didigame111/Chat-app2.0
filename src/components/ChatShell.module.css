@@ -339,6 +339,12 @@
   background: var(--bg-secondary);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
+  /* backdrop-filter creates a stacking context, which would otherwise trap
+     the conversation menu inside the header and let the message list paint
+     over it. Lifting the whole header keeps the dropdown clickable. Stays
+     below the drawer scrim (25) so an open drawer still covers it. */
+  position: relative;
+  z-index: 20;
 }
 
 .shell[data-layout='stacked'] .paneHead {
@@ -760,4 +766,97 @@
   border: 1px solid rgba(244, 63, 94, 0.3);
   color: #fda4af;
   font-size: 0.86rem;
+}
+
+/* ------------------------------------------------- conversation overflow menu */
+
+.paneMenu {
+  position: relative;
+  /* Pushed to the far end of the header, away from the back button. */
+  margin-left: auto;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: min(330px, calc(100vw - 32px));
+  padding: 6px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+  animation: fadeInUp 0.14s ease both;
+}
+
+.menuItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  color: var(--text-main);
+}
+
+.menuItem svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.menuItem span {
+  display: grid;
+  gap: 2px;
+}
+
+.menuItem strong {
+  font-weight: 580;
+  font-size: 0.97rem;
+}
+
+.menuItem em {
+  font-style: normal;
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.menuItem:active {
+  background: var(--bg-elevated);
+}
+
+@media (hover: hover) {
+  .menuItem:hover {
+    background: var(--bg-elevated);
+  }
+}
+
+.menuItemDanger,
+.menuItemDanger svg,
+.menuItemDanger strong {
+  color: var(--danger);
+}
+
+.adminRow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  margin: 0 16px 10px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.14));
+  border: 1px solid var(--border-accent);
+  color: var(--accent-secondary);
+  font-size: 0.9rem;
+  font-weight: 560;
+}
+
+.adminRow:active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.24));
 }

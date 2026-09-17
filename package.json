@@ -1,9 +1,9 @@
 {
-  "name": "chat-app-2",
+  "name": "schoology-2",
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Aura Chat 2.0 — a fully static, serverless chat app for Firebase Hosting (Spark/free plan), tuned for iPad 9th & 10th generation.",
+  "description": "Schoology 2.0 \u2014 a fully static, serverless chat app for Firebase Hosting (Spark/free plan), tuned for iPad 9th & 10th generation.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

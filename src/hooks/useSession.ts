@@ -7,7 +7,8 @@ import {
   updateProfile,
   type User,
 } from 'firebase/auth';
-import { auth, usernameToEmail } from '../firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db, usernameToEmail } from '../firebase';
 import { createProfile, getProfile, touchPresence } from '../lib/chat';
 import type { Profile } from '../lib/types';
 
@@ -17,6 +18,8 @@ export interface Session {
   status: SessionStatus;
   user: User | null;
   profile: Profile | null;
+  /** Set when the last sign-out was forced rather than chosen. */
+  notice: string | null;
 }
 
 const PRESENCE_INTERVAL_MS = 45_000;
@@ -49,30 +52,79 @@ export function describeAuthError(error: unknown): string {
 export function useSession(): Session & {
   signUp: (username: string, password: string) => Promise<void>;
   signIn: (username: string, password: string) => Promise<void>;
-  signOutOfAura: () => Promise<void>;
+  signOutOfSchoology: () => Promise<void>;
 } {
   const [session, setSession] = useState<Session>({
     status: 'loading',
     user: null,
     profile: null,
+    notice: null,
   });
 
   useEffect(() => {
-    return onAuthStateChanged(auth(), async (user) => {
+    let watchProfile: (() => void) | undefined;
+
+    const stop = onAuthStateChanged(auth(), async (user) => {
+      watchProfile?.();
+      watchProfile = undefined;
+
       if (!user) {
-        setSession({ status: 'signed-out', user: null, profile: null });
+        setSession((prev) => ({
+          status: 'signed-out',
+          user: null,
+          profile: null,
+          // Keep any "you were removed" message across the sign-out.
+          notice: prev.notice,
+        }));
         return;
       }
 
       // The profile document is separate from the auth record: it is the
       // searchable directory entry other people find you by.
-      let profile = await getProfile(user.uid);
-      if (!profile) {
+      const existing = await getProfile(user.uid);
+      if (!existing) {
         const fallback = user.displayName || user.email?.split('@')[0] || 'friend';
-        profile = await createProfile(user.uid, fallback);
+        await createProfile(user.uid, fallback);
       }
-      setSession({ status: 'ready', user, profile });
+
+      // Watched, not fetched once, so an admin blocking or removing this
+      // account takes effect wherever they are signed in — within a second,
+      // without waiting for a reload.
+      watchProfile = onSnapshot(doc(db(), 'users', user.uid), (snap) => {
+        const profile = snap.data() as Profile | undefined;
+
+        if (!profile) {
+          void signOut(auth());
+          setSession({
+            status: 'signed-out',
+            user: null,
+            profile: null,
+            notice: 'This account has been removed by an administrator.',
+          });
+          return;
+        }
+
+        if (profile.blocked) {
+          void signOut(auth());
+          setSession({
+            status: 'signed-out',
+            user: null,
+            profile: null,
+            notice: profile.removing
+              ? 'This account has been removed by an administrator.'
+              : 'This account has been blocked by an administrator.',
+          });
+          return;
+        }
+
+        setSession({ status: 'ready', user, profile, notice: null });
+      });
     });
+
+    return () => {
+      watchProfile?.();
+      stop();
+    };
   }, []);
 
   // Heartbeat that drives the green "online" dot. One small write a minute,
@@ -108,12 +160,14 @@ export function useSession(): Session & {
   }, []);
 
   const signIn = useCallback(async (username: string, password: string) => {
+    setSession((prev) => ({ ...prev, notice: null }));
     await signInWithEmailAndPassword(auth(), usernameToEmail(username), password);
   }, []);
 
-  const signOutOfAura = useCallback(async () => {
+  const signOutOfSchoology = useCallback(async () => {
+    setSession((prev) => ({ ...prev, notice: null }));
     await signOut(auth());
   }, []);
 
-  return { ...session, signUp, signIn, signOutOfAura };
+  return { ...session, signUp, signIn, signOutOfSchoology };
 }
