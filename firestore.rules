@@ -17,14 +17,42 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    // Admin power is defined by one hand-seeded document, config/admins, which
-    // nothing in the app can write to. Always put this AFTER the ordinary
-    // check in an `||` so the extra document read only happens when someone
-    // is actually acting as an admin.
-    function isAdmin() {
+    // The built-in administrator, recognised by username.
+    //
+    // config/admins below holds uids, but a uid does not exist until someone
+    // has signed up, so a freshly deployed copy would otherwise have no
+    // administrator at all and no way to appoint one. This account is keyed on
+    // the username instead, which is known in advance.
+    //
+    // Exactly one account can ever hold it. Usernames become Firebase Auth
+    // addresses (arthurlima@...), Auth enforces uniqueness on those, the
+    // mapping lowercases, and usernameLower is frozen once the profile exists
+    // (see the users rules below). So it cannot be claimed twice or renamed
+    // onto — but it IS first-come, so sign this account up before sharing the
+    // URL. DEPLOY.md says so too.
+    //
+    // ⚠️ Duplicated as DEFAULT_ADMIN_USERNAME in src/lib/admin.ts, which
+    // decides whether to show the dashboard button. Change both together.
+    function isDefaultAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(me()))
+        && get(/databases/$(database)/documents/users/$(me())).data.usernameLower
+             == 'arthurlima';
+    }
+
+    // Everyone else gets admin from one hand-seeded document, config/admins,
+    // which nothing in the app can write to.
+    //
+    // Always put isAdmin() AFTER the ordinary check in an `||`, so these extra
+    // document reads only happen when someone is genuinely acting as an admin.
+    function isListedAdmin() {
       return signedIn()
         && exists(/databases/$(database)/documents/config/admins)
         && me() in get(/databases/$(database)/documents/config/admins).data.uids;
+    }
+
+    function isAdmin() {
+      return isListedAdmin() || isDefaultAdmin();
     }
 
     // --------------------------------------------------------------- config
@@ -120,17 +148,32 @@ service cloud.firestore {
       // ------------------------------------------------------------ messages
       match /messages/{messageId} {
 
-        function chatMembers() {
-          return get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-        }
-
+        // Membership is derived from the conversation id rather than read out
+        // of the conversation document. The id IS the two uids, sorted and
+        // joined — `canonicalId()` above enforces that at creation and the
+        // member list is frozen afterwards, so the two are equivalent.
+        //
+        // Deriving it costs no document read, which matters here because this
+        // runs on every message read, sent and deleted. It also cannot throw:
+        // a get() against a conversation document that has already been
+        // deleted mid-purge returns null, and dereferencing that aborts rule
+        // evaluation instead of simply denying.
         function inThisChat() {
-          return signedIn() && me() in chatMembers();
+          return signedIn() && chatId.split('_').hasAny([me()]);
         }
 
-        allow read: if inThisChat();
+        // Sending additionally requires the conversation to actually exist, so
+        // messages cannot be stashed under a conversation nobody ever opened.
+        function conversationExists() {
+          return exists(/databases/$(database)/documents/chats/$(chatId));
+        }
+
+        // Admins need to read a conversation's messages in order to delete
+        // them when removing a user; they are a member of none of them.
+        allow read: if inThisChat() || isAdmin();
 
         allow create: if inThisChat()
+          && conversationExists()
           && request.resource.data.senderId == me()
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 4000

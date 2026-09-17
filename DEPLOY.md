@@ -134,11 +134,30 @@ running (iPadOS 16.4+ requires the Home Screen install for this).
 
 ---
 
-## 8. Make yourself an admin
+## 8. Admins
 
-The admin dashboard is hidden until your uid is listed in a single Firestore
+### The built-in admin
+
+**`ArthurLima` is an administrator automatically.** Sign up with that username
+and the **Admin dashboard** button is in the sidebar straight away. There is
+nothing to configure — you can skip the rest of this section unless you want a
+second admin.
+
+> ⚠️ **Do this first, before you give the URL to anyone.** The account is
+> claimed by whoever signs up with the name. Once it exists nobody else can
+> take it — Firebase Auth enforces that, in any casing — but until then the
+> name is unclaimed. Sign up, then share the link.
+
+Renaming the built-in admin means editing two files and redeploying:
+`DEFAULT_ADMIN_USERNAME` in `src/lib/admin.ts` and the username inside
+`isDefaultAdmin()` in `firestore.rules`. They must match, and the rules one is
+the one that actually grants the power.
+
+### Adding more admins
+
+Everyone else becomes an admin by having their uid listed in a single Firestore
 document. Nothing in the app can write to that document — that is what stops
-anyone promoting themselves — so you seed it by hand, once.
+anyone promoting themselves — so you seed it by hand.
 
 ### Find your uid
 
@@ -166,11 +185,15 @@ You should end up with `config/admins` containing `uids: ["your-uid-here"]`.
 
 ### Check it
 
-Reload the app. An **Admin dashboard** button appears above your name in the
+Reload the app. An **Admin dashboard** button appears above their name in the
 sidebar — no redeploy needed, the app watches that document live.
 
-To add another admin later, open the same document and add a second item to the
+To add another admin later, open the same document and add another item to the
 `uids` array.
+
+> Worth doing for `ArthurLima` too, even though it already works: a uid entry
+> is tied to the account rather than the name, which closes the first-come
+> window described above for good.
 
 ---
 
@@ -284,12 +307,24 @@ is covered in **[UPDATING.md](UPDATING.md)**.
 
 ## Keeping it free
 
+A short audit of this exact code is in
+[README → Verified free-plan compatibility](README.md#verified-free-plan-compatibility):
+which Firebase modules it imports, why photos and notifications work the way
+they do, and the write-volume arithmetic.
+
+### The numbers
+
 The Spark plan's daily Firestore allowance is 50,000 reads, 20,000 writes and
 20,000 deletes, plus 1 GiB stored. Hosting gives 10 GB of storage and 360 MB of
-transfer per day. Schoology spends 2 writes per message sent and 2 reads per message
-received, so ordinary use by a small group stays far inside the limits. Presence
-heartbeats are one write per user per minute, and only while the app is
-actually on screen.
+transfer per day.
+
+Sending a message costs 3 writes and 1 read; receiving costs 1 read and 1
+write. The online-presence heartbeat is 1 write per user every 150 seconds, and
+only while the app is actually on screen — that interval is deliberately slow,
+because it is the largest single consumer of the write quota.
+
+Twenty people exchanging fifty messages each lands around 7,000 writes and
+8,000 reads in a day, roughly a third of the allowance.
 
 Spark has no billing attached, so exceeding a quota pauses the service until the
 daily reset. It cannot generate a bill.

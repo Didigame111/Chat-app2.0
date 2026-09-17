@@ -28,8 +28,12 @@ const MESSAGE_WINDOW = 250;
 /** A typing flag older than this is treated as "stopped typing". */
 export const TYPING_TTL_MS = 6000;
 
-/** Someone is "online" if their heartbeat landed within this window. */
-export const PRESENCE_TTL_MS = 90_000;
+/**
+ * Someone is "online" if their heartbeat landed within this window. It must be
+ * comfortably wider than PRESENCE_INTERVAL_MS, or a beat arriving slightly
+ * late makes an active person flicker offline.
+ */
+export const PRESENCE_TTL_MS = 360_000;
 
 /**
  * Both people must derive the same conversation id without a lookup, so it is

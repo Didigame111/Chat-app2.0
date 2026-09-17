@@ -8,7 +8,13 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
-import { purgeUser, setUserBlocked, subscribeToAllUsers } from '../lib/admin';
+import {
+  hasAdminRights,
+  isDefaultAdmin,
+  purgeUser,
+  setUserBlocked,
+  subscribeToAllUsers,
+} from '../lib/admin';
 import { isOnline } from '../lib/chat';
 import { formatListTime, toMillis } from '../lib/format';
 import type { Profile } from '../lib/types';
@@ -192,7 +198,7 @@ export function AdminDashboard({ me, adminUids, onClose }: AdminDashboardProps) 
           <ul className={styles.list}>
             {filtered.map((user) => {
               const isMe = user.uid === me.uid;
-              const isAdminUser = adminUids.includes(user.uid);
+              const isAdminUser = hasAdminRights(user, adminUids);
 
               return (
                 <li key={user.uid} className={styles.row} data-blocked={Boolean(user.blocked)}>
@@ -201,7 +207,11 @@ export function AdminDashboard({ me, adminUids, onClose }: AdminDashboardProps) 
                   <div className={styles.rowInfo}>
                     <p className={styles.rowName}>
                       {user.username}
-                      {isAdminUser && <span className={styles.tagAdmin}>Admin</span>}
+                      {isAdminUser && (
+                        <span className={styles.tagAdmin}>
+                          {isDefaultAdmin(user) ? 'Owner' : 'Admin'}
+                        </span>
+                      )}
                       {isMe && <span className={styles.tagYou}>You</span>}
                       {user.blocked && <span className={styles.tagBlocked}>Blocked</span>}
                     </p>

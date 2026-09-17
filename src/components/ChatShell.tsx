@@ -14,7 +14,7 @@ import {
   sendMessage,
   setTyping,
 } from '../lib/chat';
-import { subscribeToAdmins } from '../lib/admin';
+import { hasAdminRights, subscribeToAdmins } from '../lib/admin';
 import { AdminDashboard } from './AdminDashboard';
 import { ConfirmDialog } from './ConfirmDialog';
 import { notify, previewOf } from '../lib/notify';
@@ -55,7 +55,7 @@ export function ChatShell({ me, onSignOut }: ChatShellProps) {
 
   useEffect(() => subscribeToAdmins(setAdminUids), []);
 
-  const isAdmin = adminUids.includes(me.uid);
+  const isAdmin = hasAdminRights(me, adminUids);
 
   const activeChat = useMemo(
     () => chats.find((chat) => chat.id === activeId),

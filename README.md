@@ -205,13 +205,33 @@ Auth's own uniqueness check on the address is what makes usernames unique.
 
 ## Admin
 
-Admin power is defined by one Firestore document, `config/admins`, holding a
-list of uids. `firestore.rules` reads that same document to decide what an
-admin may do, so the power is enforced by the rules engine — hiding the
-dashboard button in the UI is only a convenience. Nothing in the app can write
-to that document, so there is no way to promote yourself; it is seeded by hand
-in the Firebase console. **[DEPLOY.md](DEPLOY.md#9-make-yourself-an-admin)** has
-the steps.
+**`ArthurLima` is the administrator by default.** Sign up with that username
+and the dashboard is simply there — no Firebase console step, no configuration.
+
+It has to work by username rather than by uid, because a uid does not exist
+until somebody has signed up, so a freshly deployed copy would otherwise have
+no administrator and no way to appoint one. Exactly one account can ever hold
+it: usernames become Firebase Auth addresses (`arthurlima@…`), Auth enforces
+uniqueness on those, the mapping lowercases so casing cannot be used to get a
+second one, and `usernameLower` is frozen once a profile exists.
+
+> ⚠️ **It is first-come.** Whoever registers the username gets it, so sign
+> `ArthurLima` up yourself before you share the URL with anyone. Once the
+> account exists it cannot be taken. To close the window permanently, add its
+> uid to `config/admins` as below — that is uid-based and immune to the name.
+
+Additional admins come from one Firestore document, `config/admins`, holding a
+list of uids. `firestore.rules` reads that same document — and checks the
+default-admin username — to decide what an admin may do, so the power is
+enforced by the rules engine. Hiding the dashboard button in the UI is only a
+convenience. Nothing in the app can write to `config/admins`, so there is no
+way to promote yourself; it is seeded by hand in the Firebase console.
+**[DEPLOY.md](DEPLOY.md#8-admins)** has the steps.
+
+The default admin's username lives in two places that must agree:
+`DEFAULT_ADMIN_USERNAME` in `src/lib/admin.ts` (decides whether to show the
+button) and `isDefaultAdmin()` in `firestore.rules` (decides what they can
+actually do). Changing it means changing both and redeploying rules.
 
 The dashboard lists every account with its join date, last-seen time, online
 state and uid, and offers:
@@ -222,7 +242,8 @@ state and uid, and offers:
   (both sides), and leaves them blocked.
 
 Admins and your own account are marked *Protected* and cannot be blocked or
-deleted from the dashboard, so it is not possible to lock everyone out.
+deleted from the dashboard, so it is not possible to lock everyone out. The
+built-in admin is tagged **Owner**.
 
 ## Honest limits
 
@@ -251,11 +272,63 @@ deleted from the dashboard, so it is not possible to lock everyone out.
 
 ---
 
-## Free-tier headroom
+## Verified free-plan compatibility
 
-The Spark plan gives 50,000 Firestore reads, 20,000 writes and 1 GiB of storage
-per day, and Hosting gives 10 GB of storage with 360 MB/day of transfer.
-Sending a message costs 2 writes (the message and the conversation summary) and
-receiving it costs 2 reads. That is roughly **10,000 messages a day** before
-anything runs out — far past what a handful of people will use, and it stops
-rather than bills you if you ever get there.
+Everything below was checked against this code, not assumed.
+
+**No Blaze-only service is reachable.** The whole app imports exactly three
+Firebase modules — `firebase/app`, `firebase/auth`, `firebase/firestore`.
+There is no reference anywhere to Cloud Storage, Cloud Functions, App Hosting
+or Data Connect, and `firebase.json` declares only `hosting`, `firestore` and
+`emulators`. `firestore.indexes.json` defines one composite index against a
+limit of 200.
+
+The two places a chat app normally reaches for a paid service are handled
+differently on purpose:
+
+| Normally needs Blaze | What this does instead |
+| --- | --- |
+| Cloud Storage for photos | Compressed in-browser to ≤480 KB and inlined into the message document |
+| Cloud Functions to fan out push | Notifications raised by the page itself while it is open |
+
+**Deleting works without the Admin SDK.** Firestore has no client-side
+recursive delete, so conversations are paged and batch-deleted. Message
+membership is derived from the conversation id — which *is* the two uids,
+sorted and joined — rather than read out of the conversation document, so
+bulk deletes spend no extra reads and cannot fail on a document that the
+purge has already removed. Verified by deleting a 120-message conversation as
+a member, and by an admin purging a user across two conversations and 120
+messages.
+
+**Write volume is the thing that actually decides whether you stay inside the
+free tier**, and the presence heartbeat dominates it, because it is charged per
+user per interval whether or not anyone is talking:
+
+| Heartbeat | Writes/hour/user | 30 users × 8h | Verdict |
+| --- | --- | --- | --- |
+| 45s (first draft) | 80 | **19,200/day** | Exhausts the 20,000 quota on green dots alone |
+| 150s (shipped) | 24 | 5,760/day | Leaves ~70% of the quota for conversation |
+
+The heartbeat also stops entirely when the app is not on screen.
+
+Per message: **3 writes** (the message, the conversation summary, one typing
+flag) and **1 read** (the rule that checks the conversation exists). Receiving
+costs 1 read plus 1 write for the read receipt. Against the daily allowance of
+20,000 writes and 50,000 reads, twenty people exchanging fifty messages each
+lands near 7,000 writes and 8,000 reads — roughly a third of the quota.
+
+**Storage:** 1 GiB of Firestore, and a photo costs at most 480 KB, so about
+2,000 photos before it fills. Hosting's 10 GB and 360 MB/day of transfer are
+not a realistic constraint for a ~280 KB app.
+
+**Spark has no billing account attached, so it cannot generate a charge.**
+Exceeding a daily quota pauses the service until the next reset — it does not
+bill you, and it does not ask for a card.
+
+## If you outgrow it
+
+The quota that binds first is daily writes. If you ever approach it, the cheap
+levers in order are: raise `PRESENCE_INTERVAL_MS` in `src/hooks/useSession.ts`
+further (or drop the online dot entirely), then raise `TYPING_IDLE_MS` in
+`src/components/Composer.tsx`. Both are pure quota, no feature loss beyond
+precision. Only after that would upgrading be worth considering.

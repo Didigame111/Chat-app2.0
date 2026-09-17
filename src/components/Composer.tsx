@@ -53,11 +53,16 @@ export function Composer({ disabled, onSend, onTyping }: ComposerProps) {
     }, TYPING_IDLE_MS);
   };
 
-  const stopTyping = () => {
+  /**
+   * `notify: false` clears the local state without spending a write. Sending a
+   * message already zeroes the typing flag inside the same batch, so telling
+   * the server again would cost an extra write per message for nothing.
+   */
+  const stopTyping = (notify = true) => {
     window.clearTimeout(typingTimer.current);
     if (typingActive.current) {
       typingActive.current = false;
-      onTyping(false);
+      if (notify) onTyping(false);
     }
   };
 
@@ -89,7 +94,7 @@ export function Composer({ disabled, onSend, onTyping }: ComposerProps) {
     // for the round trip would make the app feel slow on patchy Wi-Fi.
     setText('');
     setImage(null);
-    stopTyping();
+    stopTyping(false);
     setSending(true);
     setError(null);
 
@@ -175,7 +180,7 @@ export function Composer({ disabled, onSend, onTyping }: ComposerProps) {
             setText(event.target.value);
             pingTyping();
           }}
-          onBlur={stopTyping}
+          onBlur={() => stopTyping()}
           onKeyDown={onKeyDown}
           /* Sentences get capitalised, handles do not — this is prose. */
           autoCapitalize="sentences"
