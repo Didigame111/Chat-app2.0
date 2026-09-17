@@ -3,10 +3,10 @@
  *
  * Real push (Firebase Cloud Messaging fan-out) needs a server to hold the
  * sender key, and a server means Cloud Functions, and Cloud Functions means
- * the Blaze plan and a credit card. So Aura raises notifications from the page
+ * the Blaze plan and a credit card. So Schoology raises notifications from the page
  * itself: when a message arrives on an open connection while you are looking
  * somewhere else, you still get a banner. On iPadOS this works in Safari and,
- * once Aura is added to the Home Screen, in the installed app too (iPadOS
+ * once Schoology is added to the Home Screen, in the installed app too (iPadOS
  * 16.4+).
  */
 

@@ -9,7 +9,7 @@ createRoot(document.getElementById('root') as HTMLElement).render(
   </StrictMode>,
 );
 
-// App-shell caching, so Aura opens offline once it has been added to the
+// App-shell caching, so Schoology opens offline once it has been added to the
 // iPad's Home Screen. Registered after load so it never competes with the
 // first paint.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

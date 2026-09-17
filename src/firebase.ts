@@ -19,6 +19,11 @@ declare global {
  * in with an email address. We bridge the two with a synthetic address on a
  * reserved, permanently unresolvable TLD (RFC 2606), so no mail is ever sent
  * and nobody has to own a domain. Nothing here needs a paid plan.
+ *
+ * NOTE: this domain deliberately kept its original spelling through the
+ * rename to Schoology. It is the identity Firebase Auth stores for every
+ * existing account — changing it would lock out everyone who has already
+ * signed up. It is internal plumbing and never shown to anyone.
  */
 export const USER_EMAIL_DOMAIN =
   import.meta.env.VITE_AUTH_EMAIL_DOMAIN || 'aura-users.invalid';
@@ -60,7 +65,7 @@ if (config) {
   dbInstance = initializeFirestore(app, {
     // Offline cache: an iPad that loses Wi-Fi mid-lesson keeps showing the
     // conversation, and queued sends flush when it reconnects. Multi-tab
-    // manager keeps Safari's Split View (two Aura windows) consistent.
+    // manager keeps Safari's Split View (two Schoology windows) consistent.
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
   });
 

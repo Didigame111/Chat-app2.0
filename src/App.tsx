@@ -16,7 +16,7 @@ export default function App() {
 }
 
 function ConfiguredApp() {
-  const { status, profile, signIn, signUp, signOutOfAura } = useSession();
+  const { status, profile, notice, signIn, signUp, signOutOfSchoology } = useSession();
 
   if (status === 'loading') {
     return (
@@ -28,14 +28,14 @@ function ConfiguredApp() {
           color: 'var(--text-dim)',
         }}
       >
-        Loading Aura…
+        Loading Schoology…
       </div>
     );
   }
 
   if (status === 'signed-out' || !profile) {
-    return <AuthScreen onSignIn={signIn} onSignUp={signUp} />;
+    return <AuthScreen onSignIn={signIn} onSignUp={signUp} notice={notice} />;
   }
 
-  return <ChatShell me={profile} onSignOut={() => void signOutOfAura()} />;
+  return <ChatShell me={profile} onSignOut={() => void signOutOfSchoology()} />;
 }

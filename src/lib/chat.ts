@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -212,4 +213,49 @@ export function isTyping(chat: Chat | undefined, uid: string): boolean {
 
 export function isOnline(lastSeen: number | undefined): boolean {
   return Boolean(lastSeen && Date.now() - lastSeen < PRESENCE_TTL_MS);
+}
+
+// ------------------------------------------------- closing & deleting chats
+
+/**
+ * Hides a conversation from one person's list without touching the other
+ * person's copy or any of the messages. A message newer than the hide stamp
+ * brings it straight back.
+ */
+export function hideConversation(chatId: string, uid: string): Promise<void> {
+  return updateDoc(doc(db(), 'chats', chatId), {
+    [`hiddenAt.${uid}`]: Date.now(),
+  }).catch(() => undefined);
+}
+
+export function isHiddenFor(chat: Chat, uid: string): boolean {
+  const hiddenAt = chat.hiddenAt?.[uid] ?? 0;
+  return hiddenAt > 0 && chat.lastMessageAt <= hiddenAt;
+}
+
+/**
+ * Permanently deletes a conversation and every message in it, for BOTH people.
+ *
+ * Firestore has no recursive delete on the client — that is an Admin SDK
+ * feature, and the Admin SDK needs a server we deliberately do not have. So
+ * the messages are paged through and deleted in batches (500 writes is the
+ * hard batch limit) before the parent document goes.
+ */
+export async function deleteConversation(chatId: string): Promise<void> {
+  const messages = collection(db(), 'chats', chatId, 'messages');
+
+  // Page rather than reading the whole thread at once: a long conversation
+  // with inlined photos could otherwise pull megabytes into memory.
+  for (;;) {
+    const page = await getDocs(query(messages, limit(400)));
+    if (page.empty) break;
+
+    const batch = writeBatch(db());
+    page.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+
+    if (page.size < 400) break;
+  }
+
+  await deleteDoc(doc(db(), 'chats', chatId));
 }

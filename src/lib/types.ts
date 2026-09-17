@@ -8,6 +8,14 @@ export interface Profile {
   hue: number;
   createdAt: Timestamp | null;
   lastSeen: number;
+  /** Set by an admin. A blocked person is signed out and cannot sign back in. */
+  blocked?: boolean;
+  /**
+   * Set at the start of an admin purge, which blocks first so a half-finished
+   * delete still locks the account out. It exists so the person is told they
+   * were removed rather than merely blocked.
+   */
+  removing?: boolean;
 }
 
 export interface Chat {
@@ -25,6 +33,13 @@ export interface Chat {
   typing: Record<string, number>;
   /** uid -> epoch ms of the newest message they have seen. */
   lastRead: Record<string, number>;
+  /**
+   * uid -> epoch ms at which that person hid this conversation. It stays
+   * hidden for them until something newer than that arrives, which is what
+   * makes "close" different from "delete": it only affects your own list, and
+   * a new message brings the conversation back.
+   */
+  hiddenAt?: Record<string, number>;
 }
 
 export interface Message {

@@ -1,5 +1,5 @@
 import { type RefObject } from 'react';
-import { Bell, LogOut, Search, X, Loader2 } from 'lucide-react';
+import { Bell, LogOut, Search, ShieldCheck, X, Loader2 } from 'lucide-react';
 import { formatListTime } from '../lib/format';
 import type { Chat, Profile } from '../lib/types';
 import { Avatar } from './Avatar';
@@ -23,6 +23,8 @@ interface SidebarProps {
   onStartChat: (profile: Profile) => void;
   onClose: () => void;
   onSignOut: () => void;
+  isAdmin: boolean;
+  onOpenAdmin: () => void;
 }
 
 export function Sidebar({
@@ -41,6 +43,8 @@ export function Sidebar({
   onStartChat,
   onClose,
   onSignOut,
+  isAdmin,
+  onOpenAdmin,
 }: SidebarProps) {
   const searchMode = term.trim().length > 0;
 
@@ -54,7 +58,7 @@ export function Sidebar({
       {...(!open ? { inert: '' as unknown as boolean } : {})}
     >
       <header className={styles.sidebarHead}>
-        <h1 className={styles.brand}>Aura</h1>
+        <h1 className={styles.brand}>Schoology</h1>
         {floating && (
           <button
             type="button"
@@ -185,6 +189,13 @@ export function Sidebar({
           </>
         )}
       </div>
+
+      {isAdmin && (
+        <button type="button" className={styles.adminRow} onClick={onOpenAdmin}>
+          <ShieldCheck size={17} />
+          <span>Admin dashboard</span>
+        </button>
+      )}
 
       <NotificationPrompt
         render={(state, request) =>

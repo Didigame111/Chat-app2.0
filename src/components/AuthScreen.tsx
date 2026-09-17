@@ -8,9 +8,11 @@ type Mode = 'signin' | 'signup';
 interface AuthScreenProps {
   onSignIn: (username: string, password: string) => Promise<void>;
   onSignUp: (username: string, password: string) => Promise<void>;
+  /** Explains a sign-out that the person did not ask for (blocked, removed). */
+  notice?: string | null;
 }
 
-export function AuthScreen({ onSignIn, onSignUp }: AuthScreenProps) {
+export function AuthScreen({ onSignIn, onSignUp, notice }: AuthScreenProps) {
   const [mode, setMode] = useState<Mode>('signin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -58,7 +60,7 @@ export function AuthScreen({ onSignIn, onSignUp }: AuthScreenProps) {
         <div className={styles.mark}>
           <MessageSquare size={30} strokeWidth={2.2} />
         </div>
-        <h1 className={styles.heroTitle}>Aura</h1>
+        <h1 className={styles.heroTitle}>Schoology</h1>
         <p className={styles.heroCopy}>
           Private one-to-one messaging that opens as fast as a native app —
           built for the iPad you already have.
@@ -78,6 +80,12 @@ export function AuthScreen({ onSignIn, onSignUp }: AuthScreenProps) {
 
       <section className={styles.panel}>
         <div className={styles.card}>
+          {notice && (
+            <p className={styles.notice} role="alert">
+              {notice}
+            </p>
+          )}
+
           <div className={styles.cardHead}>
             <h2 className={styles.cardTitle}>
               {mode === 'signin' ? 'Welcome back' : 'Create your account'}

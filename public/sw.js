@@ -1,14 +1,14 @@
 /*
  * App-shell service worker.
  *
- * Purpose on an iPad: when Aura is installed to the Home Screen and the iPad
+ * Purpose on an iPad: when Schoology is installed to the Home Screen and the iPad
  * is on flaky school/cafe Wi-Fi, the shell still opens instantly instead of
  * showing Safari's offline page. Firestore keeps its own offline cache for the
  * actual messages, so this worker deliberately never touches googleapis.com
  * traffic.
  */
 
-const VERSION = 'aura-v2.0.0';
+const VERSION = 'schoology-v2.1.0';
 const SHELL = `shell-${VERSION}`;
 const RUNTIME = `runtime-${VERSION}`;
 

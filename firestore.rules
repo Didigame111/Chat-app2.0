@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Aura Chat 2.0 — security rules.
+// Schoology 2.0 — security rules.
 //
 // There is no backend in this app: the client talks to Firestore directly,
 // so these rules ARE the backend. Everything a server route used to check in
@@ -15,6 +15,25 @@ service cloud.firestore {
 
     function me() {
       return request.auth.uid;
+    }
+
+    // Admin power is defined by one hand-seeded document, config/admins, which
+    // nothing in the app can write to. Always put this AFTER the ordinary
+    // check in an `||` so the extra document read only happens when someone
+    // is actually acting as an admin.
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/config/admins)
+        && me() in get(/databases/$(database)/documents/config/admins).data.uids;
+    }
+
+    // --------------------------------------------------------------- config
+    // Readable so the app knows whether to offer the dashboard. Writable by
+    // nobody: the admin list is edited in the Firebase console only, which is
+    // what stops anyone promoting themselves.
+    match /config/{document} {
+      allow read: if signedIn();
+      allow write: if false;
     }
 
     // ---------------------------------------------------------------- users
@@ -33,12 +52,19 @@ service cloud.firestore {
         && request.resource.data.usernameLower == request.resource.data.username.lower();
 
       // A username is permanent: it is the handle other people search for.
-      allow update: if signedIn()
-        && userId == me()
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.usernameLower == resource.data.usernameLower;
+      // Note the `blocked` clause: you may update your own profile, but you
+      // may not change your own blocked flag, so nobody can unblock themselves.
+      allow update: if (signedIn()
+          && userId == me()
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.usernameLower == resource.data.usernameLower
+          && request.resource.data.get('blocked', false) == resource.data.get('blocked', false))
+        || isAdmin();
 
-      allow delete: if false;
+      // Admins remove the directory entry. The Firebase Authentication record
+      // behind it can only be deleted from the console — that needs the Admin
+      // SDK, which needs a server, which needs the paid plan.
+      allow delete: if isAdmin();
     }
 
     // ---------------------------------------------------------------- chats
@@ -71,7 +97,9 @@ service cloud.firestore {
       allow get: if isMember()
         || (signedIn() && resource == null && chatId.split('_').hasAny([me()]));
 
-      allow list: if isMember();
+      // Admins need this to find every conversation belonging to a user they
+      // are removing — they are not a member of any of them.
+      allow list: if isMember() || isAdmin();
 
       allow create: if joiningAsMember()
         && request.resource.data.members.size() == 2
@@ -84,7 +112,10 @@ service cloud.firestore {
         && joiningAsMember()
         && request.resource.data.members == resource.data.members;
 
-      allow delete: if false;
+      // Deleting a conversation destroys it for both people, so it is limited
+      // to the two of them (and to admins cleaning up after a removed user).
+      // Hiding a conversation from your own list is an ordinary update above.
+      allow delete: if isMember() || isAdmin();
 
       // ------------------------------------------------------------ messages
       match /messages/{messageId} {
@@ -117,7 +148,9 @@ service cloud.firestore {
           && request.resource.data.text == resource.data.text
           && request.resource.data.createdAt == resource.data.createdAt;
 
-        allow delete: if signedIn() && resource.data.senderId == me();
+        // Your own message, any message in a conversation you are deleting,
+        // or an admin clearing out a removed user's data.
+        allow delete: if inThisChat() || isAdmin();
       }
     }
 

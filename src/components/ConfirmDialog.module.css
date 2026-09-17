@@ -1,0 +1,93 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--safe-top) + 20px) calc(var(--safe-right) + 20px)
+    calc(var(--safe-bottom) + 20px) calc(var(--safe-left) + 20px);
+  background: rgba(2, 6, 14, 0.66);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeInUp 0.16s ease both;
+}
+
+.dialog {
+  width: min(460px, 100%);
+  padding: 26px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+.warnMark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: rgba(244, 63, 94, 0.14);
+  color: var(--danger);
+}
+
+.title {
+  font-size: 1.24rem;
+}
+
+.body {
+  margin-top: 8px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.cancel,
+.confirm,
+.confirmDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 20px;
+  border-radius: var(--radius-md);
+  font-weight: 580;
+}
+
+.cancel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  color: var(--text-main);
+}
+
+.confirm {
+  background: var(--accent-gradient);
+  color: #fff;
+}
+
+.confirmDanger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.cancel:disabled,
+.confirm:disabled,
+.confirmDanger:disabled {
+  opacity: 0.6;
+}
+
+.spin {
+  animation: spinDialog 0.9s linear infinite;
+}
+
+@keyframes spinDialog {
+  to { transform: rotate(360deg); }
+}

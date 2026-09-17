@@ -24,7 +24,7 @@ export function useMediaQuery(queryString: string): boolean {
  * portrait they are 810pt and 820pt, which falls below the line and collapses
  * the conversation list into a drawer. Because the test is width and not a
  * device sniff, iPadOS Split View and Stage Manager get the right layout too:
- * Aura in a half-screen pane behaves like portrait, full screen like landscape.
+ * Schoology in a half-screen pane behaves like portrait, full screen like landscape.
  */
 export function useSplitLayout(): boolean {
   return useMediaQuery('(min-width: 1000px)');

@@ -14,7 +14,7 @@ export function SetupNotice() {
         </div>
         <h1 className={styles.title}>Almost there</h1>
         <p className={styles.copy}>
-          Aura needs a Firebase project before it can sign anyone in. Everything
+          Schoology needs a Firebase project before it can sign anyone in. Everything
           it uses — Hosting, Authentication and Cloud Firestore — is included in
           the free Spark plan, so no billing account or card is required.
         </p>
