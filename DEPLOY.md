@@ -284,12 +284,24 @@ is covered in **[UPDATING.md](UPDATING.md)**.
 
 ## Keeping it free
 
+A short audit of this exact code is in
+[README → Verified free-plan compatibility](README.md#verified-free-plan-compatibility):
+which Firebase modules it imports, why photos and notifications work the way
+they do, and the write-volume arithmetic.
+
+### The numbers
+
 The Spark plan's daily Firestore allowance is 50,000 reads, 20,000 writes and
 20,000 deletes, plus 1 GiB stored. Hosting gives 10 GB of storage and 360 MB of
-transfer per day. Schoology spends 2 writes per message sent and 2 reads per message
-received, so ordinary use by a small group stays far inside the limits. Presence
-heartbeats are one write per user per minute, and only while the app is
-actually on screen.
+transfer per day.
+
+Sending a message costs 3 writes and 1 read; receiving costs 1 read and 1
+write. The online-presence heartbeat is 1 write per user every 150 seconds, and
+only while the app is actually on screen — that interval is deliberately slow,
+because it is the largest single consumer of the write quota.
+
+Twenty people exchanging fifty messages each lands around 7,000 writes and
+8,000 reads in a day, roughly a third of the allowance.
 
 Spark has no billing attached, so exceeding a quota pauses the service until the
 daily reset. It cannot generate a bill.

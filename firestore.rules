@@ -120,17 +120,32 @@ service cloud.firestore {
       // ------------------------------------------------------------ messages
       match /messages/{messageId} {
 
-        function chatMembers() {
-          return get(/databases/$(database)/documents/chats/$(chatId)).data.members;
-        }
-
+        // Membership is derived from the conversation id rather than read out
+        // of the conversation document. The id IS the two uids, sorted and
+        // joined — `canonicalId()` above enforces that at creation and the
+        // member list is frozen afterwards, so the two are equivalent.
+        //
+        // Deriving it costs no document read, which matters here because this
+        // runs on every message read, sent and deleted. It also cannot throw:
+        // a get() against a conversation document that has already been
+        // deleted mid-purge returns null, and dereferencing that aborts rule
+        // evaluation instead of simply denying.
         function inThisChat() {
-          return signedIn() && me() in chatMembers();
+          return signedIn() && chatId.split('_').hasAny([me()]);
         }
 
-        allow read: if inThisChat();
+        // Sending additionally requires the conversation to actually exist, so
+        // messages cannot be stashed under a conversation nobody ever opened.
+        function conversationExists() {
+          return exists(/databases/$(database)/documents/chats/$(chatId));
+        }
+
+        // Admins need to read a conversation's messages in order to delete
+        // them when removing a user; they are a member of none of them.
+        allow read: if inThisChat() || isAdmin();
 
         allow create: if inThisChat()
+          && conversationExists()
           && request.resource.data.senderId == me()
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 4000

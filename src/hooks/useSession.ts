@@ -22,7 +22,21 @@ export interface Session {
   notice: string | null;
 }
 
-const PRESENCE_INTERVAL_MS = 45_000;
+/**
+ * How often the "online" dot is refreshed.
+ *
+ * This is the single largest source of writes in the app, and it is charged
+ * per user per interval whether or not anyone says anything. The Spark plan
+ * allows 20,000 writes a day, so at a 45s beat a class of 30 with the app open
+ * all day would spend ~19,000 of them on green dots alone and run out before
+ * anyone sent a message. At 150s the same group spends ~5,800 and the rest of
+ * the quota is available for actual conversation.
+ *
+ * The cost is precision: PRESENCE_TTL_MS has to be wider than this, so someone
+ * can appear online for a few minutes after closing the app. That is a much
+ * better trade than a chat that stops working at lunchtime.
+ */
+const PRESENCE_INTERVAL_MS = 150_000;
 
 export const USERNAME_PATTERN = /^[a-zA-Z0-9._-]{3,24}$/;
 
@@ -133,6 +147,8 @@ export function useSession(): Session & {
     if (session.status !== 'ready' || !session.user) return;
     const uid = session.user.uid;
 
+    // Only while the app is actually on screen: a backgrounded iPad tab
+    // should not be spending quota.
     const beat = () => {
       if (document.visibilityState === 'visible') void touchPresence(uid);
     };
